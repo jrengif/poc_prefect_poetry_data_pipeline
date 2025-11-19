@@ -26,6 +26,7 @@ boto3 = "^1.35.0"           # AWS SDK for Python (S3 client, KMS, STS, etc.)
 httpx = "^0.27.0"           # modern (sync + async) HTTP client for calling external APIs from flows/tasks
 
 # --- Config / utils / ergonomics ---
+pandas="2.0.0"
 pydantic = "^2.7.0"         # typed settings & data validation for configs and payloads
 python-dotenv = "^1.0.0"    # load environment variables from a .env file for local/dev setups
 loguru = "^0.7.0"           # concise, structured logging with minimal boilerplate

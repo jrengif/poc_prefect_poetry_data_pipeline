@@ -1,12 +1,10 @@
 #!/bin/bash
 set -e
 
-# This script is run automatically by the official Postgres image
-# on first container initialization (when the data dir is empty).
-
-echo "Creating ETL role and database..."
+echo "Creating ETL role and granting access..."
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
+    -- 1) Create ETL role if missing
     DO
     \$do\$
     BEGIN
@@ -18,17 +16,30 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
     END
     \$do\$;
 
+    -- 2) Ensure database exists (if it didn't, owner will be ETL user)
     DO
     \$do\$
     BEGIN
         IF NOT EXISTS (
-            SELECT FROM pg_database WHERE datname = '${ETL_DB_NAME}'
+            SELECT FROM pg_database WHERE datname = '${POSTGRES_DB}'
         ) THEN
-            CREATE DATABASE ${ETL_DB_NAME}
+            CREATE DATABASE ${POSTGRES_DB}
                 OWNER ${ETL_DB_USER};
         END IF;
     END
     \$do\$;
 EOSQL
 
-echo "ETL role and database created (or already present)."
+# 3) Now connect to the target DB and grant privileges
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+    GRANT CONNECT ON DATABASE ${POSTGRES_DB} TO ${ETL_DB_USER};
+
+    GRANT USAGE ON SCHEMA public TO ${ETL_DB_USER};
+    GRANT CREATE ON SCHEMA public TO ${ETL_DB_USER};
+
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${ETL_DB_USER};
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public
+        GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${ETL_DB_USER};
+EOSQL
+
+echo "ETL role and privileges configured."

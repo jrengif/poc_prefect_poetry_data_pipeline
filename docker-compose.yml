@@ -28,6 +28,33 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+  
+  # one-shot container that creates the star schema
+  warehouse-schema-init:
+    <<: *common-env
+    build:
+      context: .                 # where your Dockerfile and code live
+      dockerfile: Dockerfile.warehouse-schema-init
+    image: warehouse-schema-init:latest
+    container_name: warehouse_schema_init
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    environment:
+      # Connection envs used by init_star_schema.py
+      PGHOST: postgres-db           # service name of the DB
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-warehouse_db}
+      PGUSER: ${ETL_DB_USER:-etl_user}
+      PGPASSWORD: ${ETL_DB_PASSWORD:-etl_password}
+    volumes:
+      # Mount your Python init script into the container
+      - ./:/app
+    # Install psycopg2-binary and run the script once, then exit
+    command: >
+      ["python", "/app/init_star_schema.py"]
+    restart: "no"
+
 
   prefect:
     <<: *common-env

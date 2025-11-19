@@ -241,6 +241,7 @@ poc_prefect_poetry_data_pipeline/
   /assets/images/                 # images included in the README.md file
   flows/                          # Prefect flows for orchestrating the DataPipeline
   infra/postgres/init-etl.user.sh # Script for creating ETL postgres user for isolated priviliges
+  test/data                       # Checking in advance csv files or for testing purposes
   .gitignore                      # included replicatable files created at runtime or for local config
   docker-compose.yml              # VMs isolation for orchestration and warehouse layer
   poetry.lock                     # (added after poetry install including actual libraries installed)
