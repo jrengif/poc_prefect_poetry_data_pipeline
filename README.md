@@ -268,46 +268,78 @@ x-common-env: &common-env
     - .env
 ```
 
-## 🗄️ Warehouse Layer – postgres-db
+You only need to maintain one .env file to control:
 
-Role in the architecture:
+- DB names, users, passwords.
+- Prefect API URLs.
+
+Port mappings per environment.
+
+This keeps infra changes low-risk and easy to roll back.
+
+### 🗄️ Warehouse Layer – postgres-db
+
+Role in the architecture
 
 - Acts as the data warehouse layer.
-- On first startup:
-  - Initializes the main DB (warehouse_db).
-- Runs init-etl-user.sh to create a restricted ETL user and grant the right privileges.
-Uses a named Docker volume (postgres_data) so data persists across container restarts.
+ - On first startup:
+    - Initializes the main DB: warehouse_db.
+    - Runs init-etl-user.sh to create a restricted ETL user and grant the right privileges.
+- Uses a named Docker volume (postgres_data) so data persists across container restarts.
 
-Why this is modular/replicable:
+Why this matters for the business?
+- A single source of truth for analytics and reporting.
+- Clear separation between admin and ETL users reduces the credentials leaks.
+- Versioned and reproducible: you can spin up identical environments for testing or demo purposes.
 
+Why this is modular/replicable
 - You can swap postgres:16 to another supported version with zero changes in the application code.
 - By adjusting only .env, you can:
-- Change DB names/users/passwords.
-- Run multiple isolated environments (e.g. warehouse_db_dev, warehouse_db_test).
+  - Change DB names/users/passwords.
+  - Run multiple isolated environments (e.g. warehouse_db_dev, warehouse_db_test) from the exact same compose file.
 
-### ⚙️ Orchestration Layer – prefect
+### ⚙️ Orchestration Layer – prefect (Server & UI)
 
-Role in the architecture:
+Role in the architecture
 
 - Runs the Prefect 3 server and UI.
 - Orchestrates all your flows found in ./flows (mounted into /opt/prefect/flows).
 - Connects to Postgres using the ETL user credentials (ETL_DB_USER / ETL_DB_PASSWORD).
-- 🔎 Note: Inside Docker, the Prefect container typically reaches Postgres via the service name (e.g. postgres-db) on the default network. The compose file is already structured to make that easy to adjust via env vars.
+- Inside Docker, the Prefect services reach Postgres and each other using Docker service names, configured via environment variables.
 
-Why this is modular/replicable:
+Why this matters for the business
 
-- You can add new flows (DAGs) in flows/ and they become available to Prefect without touching the infra.
+- Central view on data pipelines health (success, failures, SLAs).
+- Faster incident response: ops/data teams can see logs, retries, and failures in one place.
+- Low-friction onboarding: new engineers just write flows and register them; they don’t need to understand the entire infrastructure.
+
+Why this is modular/replicable
+
+- Add new flows (DAGs) in flows/ and they become available to Prefect without touching the infra.
 - You can add more containers for agents, workers, or separate “compute” services, and have them all talk to the same Prefect API and warehouse.
 
-#### 📊 Managing DAGs in the Prefect Web UI
+🧵 Execution Layer – prefect-worker
+
+Role in the architecture
+- Runs a Prefect worker connected to the Prefect server.
+- Picks up work from the configured pool (default-process-pool) and executes flows from ./flows.
+
+This separation of control plane (server + UI) and data plane (worker) lets you:
+- Scale workers independently.
+- Point workers to different execution environments (e.g. larger machines, Kubernetes, etc.) without redesigning the rest of the stack.
+
+### 📊 Managing DAGs in the Prefect Web UI
 
 Once the stack is up:
-- The Prefect UI is exposed at: http://localhost:4200
+
+- Prefect UI: http://localhost:4200
 - From the UI you can:
   - See registered flows from flows/.
   - Configure schedules, parameters, and deployments.
   - Monitor runs, logs, and failures.
   - Pause/Resume or rerun flows as needed.
+
 This mirrors a production setup where:
-- Developers define flows in code.
-- Ops/Data teams manage and monitor those flows via the Prefect UI.
+  - Developers define flows in code.
+  - Ops/Data teams manage and monitor those flows via the Prefect UI.
+  - Stakeholders get transparent visibility into data pipeline reliability.

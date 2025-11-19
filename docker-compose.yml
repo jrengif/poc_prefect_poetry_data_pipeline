@@ -32,7 +32,7 @@ services:
   prefect:
     <<: *common-env
     image: prefecthq/prefect:3-latest
-    container_name: orchestration_layer
+    container_name: orchestration_management_layer
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -67,7 +67,28 @@ services:
       - "4200:4200"   # UI: http://localhost:4200
 
     volumes:
-      - ./:/opt/prefect/flows
+      - ./flows/:/opt/prefect/flows
+
+  prefect-worker:
+    <<: *common-env
+    image: prefecthq/prefect:3-latest
+    container_name: orchestration_worker_layer
+    depends_on:
+      prefect:
+        condition: service_started
+    
+    environment:
+      #FROM the worker container, the server is reachable via service name "prefect"
+      PREFECT_API_URL: ${PREFECT_API_URL:-http://0.0.0.0:4200/api}
+
+    command: >
+      prefect worker start
+      --pool default-process-pool
+      --type process
+    
+    volumes:
+      - ./flows/:/opt/prefect/flows
+
 
 volumes:
   postgres_data:
