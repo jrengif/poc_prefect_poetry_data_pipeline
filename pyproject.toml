@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "po-prefect-poetry-data-pipeline"
+name = "poc-prefect-poetry-data-pipeline"
 version = "0.1.0"
 description = "ETL Pipeline Playground — Prefect + Poetry + AWS + Docker"
 authors = ["Jose Rengifo <rengifo.17199@gmail.com>"]
@@ -17,7 +17,7 @@ prefect-aws = "^0.4.0"      # Prefect integrations for AWS (S3 blocks, credentia
 
 # --- Data access & database ---
 sqlalchemy = "^2.0.0"       # SQL toolkit / ORM to define models and run queries against Postgres
-psycopg = { version = "^3.1.0", extras = ["binary"] }  # Postgres driver used under SQLAlchemy or directly
+psycopg2-binary = "^2.9.10"
 
 # --- AWS SDK ---
 boto3 = "^1.35.0"           # AWS SDK for Python (S3 client, KMS, STS, etc.)

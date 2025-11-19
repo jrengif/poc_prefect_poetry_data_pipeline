@@ -1,6 +1,6 @@
 # 🚀 ETL Pipeline Playground — Assessment Edition  
 #### Tech stack: Poetry + Prefect + Boto 3 + AWS CLI + S3 + Postgres + Docker VM's + macOS M Series Silicon)
-#### Note: take this project as an onboarding process in your new data engineer role or to surprise a tech interviewer for a job application.
+#### Note: Take this project as an onboarding process in your new data engineer role or to surprise a tech interviewer for a job application.
 
 > _“Because nothing says ‘hire me’ like a modular, observable, containerised ETL that refuses to break under pressure.”_
 
@@ -136,9 +136,9 @@ docker compose up -d
 docker compose up -d --build
 ```
 
-After runing that you could check on docker desktop and the the container running isolated.
+After runing that you could check on docker desktop and the the containers running isolated.
 
-![alt text](image.png)
+![docker_build_testing](assets/docker_build_testing.png)
 
 
 
@@ -208,13 +208,15 @@ For the Prefect part lets open the URL and you could see the APP runing and bein
 
 http://localhost:4200/dashboard
 
+![prefect_web_UI_testing](/assets/prefect_web_UI_testing.png)
+
 For postgress use DBeaver to acces using admin priviliges as DBM
 
 https://dbeaver.io/download/
 
 After testing on debeaver filling the fields using the ones provided in the .env file
 
-![alt text](image-1.png)
+![dbeaver_connection_testing](/assets/dbeaver_connection_testing.png)
 
 
 

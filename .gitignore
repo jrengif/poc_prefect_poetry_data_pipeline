@@ -8,7 +8,7 @@ __pycache__/
 .venv/
 
 # Poetry local config
-poetry.toml
+poetry.lock
 
 # Environment variables / secrets
 .env
