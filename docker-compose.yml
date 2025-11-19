@@ -1,0 +1,73 @@
+# Docker anchors for replicating env variables into each container
+x-common-env: &common-env
+  env_file:
+    - .env
+
+services:
+  postgres-db:
+    <<: *common-env
+    image: postgres:16
+    container_name: warehouse_layer
+    environment:
+      # Postgres built-in init vars (used on first init of data dir)
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin_password}
+      POSTGRES_DB: ${POSTGRES_DB:-warehouse_db}
+
+      # Extra envs used by the custom init script
+      ETL_DB_USER: ${ETL_DB_USER:-etl_user}
+      ETL_DB_PASSWORD: ${ETL_DB_PASSWORD:-etl_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Init script to create ETL user + grant access on warehouse_db
+      - ./infra/postgres/init-etl-user.sh:/docker-entrypoint-initdb.d/10-init-etl-user.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  prefect:
+    <<: *common-env
+    image: prefecthq/prefect:3-latest
+    container_name: orchestration_layer
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-warehouse_db}
+
+      # Inside Docker, the DB host is the service name `db`
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      
+      # ETL app connection details (same DB: warehouse_db)
+      ETL_DB_USER: ${ETL_DB_USER:-etl_user}
+      ETL_DB_PASSWORD: ${ETL_DB_PASSWORD:-etl_password}
+
+      # Prefect server config – listen on all interfaces in the container
+      PREFECT_SERVER_API_HOST: 0.0.0.0
+      PREFECT_SERVER_API_PORT: 4200
+
+      # How Prefect clients/agents inside Docker should reach the API
+      PREFECT_API_URL: ${PREFECT_API_URL:-http://0.0.0.0:4200/api}
+
+      # How the browser on your laptop should reach the API
+      PREFECT_UI_API_URL: ${PREFECT_UI_API_URL:-http://localhost:4200/api}
+
+    command: >
+      prefect server start
+      --host 0.0.0.0
+      --port 4200
+
+    ports:
+      - "4200:4200"   # UI: http://localhost:4200
+
+    volumes:
+      - ./:/opt/prefect/flows
+
+volumes:
+  postgres_data:

@@ -1,0 +1,44 @@
+[tool.poetry]
+name = "po-prefect-poetry-data-pipeline"
+version = "0.1.0"
+description = "ETL Pipeline Playground — Prefect + Poetry + AWS + Docker"
+authors = ["Jose Rengifo <rengifo.17199@gmail.com>"]
+readme = "README.md"
+packages = [
+    { include = "poc_prefect_poetry_data_pipeline", from = "src" }
+]
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.13"
+
+# --- Orchestration & workflow ---
+prefect = "^3.0.0"          # workflow orchestration, task/flow scheduling, retries, observability
+prefect-aws = "^0.4.0"      # Prefect integrations for AWS (S3 blocks, credentials, etc.)
+
+# --- Data access & database ---
+sqlalchemy = "^2.0.0"       # SQL toolkit / ORM to define models and run queries against Postgres
+psycopg = { version = "^3.1.0", extras = ["binary"] }  # Postgres driver used under SQLAlchemy or directly
+
+# --- AWS SDK ---
+boto3 = "^1.35.0"           # AWS SDK for Python (S3 client, KMS, STS, etc.)
+
+# --- HTTP / API clients ---
+httpx = "^0.27.0"           # modern (sync + async) HTTP client for calling external APIs from flows/tasks
+
+# --- Config / utils / ergonomics ---
+pydantic = "^2.7.0"         # typed settings & data validation for configs and payloads
+python-dotenv = "^1.0.0"    # load environment variables from a .env file for local/dev setups
+loguru = "^0.7.0"           # concise, structured logging with minimal boilerplate
+typer = "^0.12.0"           # build CLIs (e.g. `etl-local`) with typed commands and options
+rich = "^13.0.0"            # pretty terminal output (colors, tables, progress bars, nice tracebacks)
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"           # test framework
+pytest-cov = "^5.0.0"       # coverage reporting for tests
+black = "^24.0.0"           # opinionated code formatter
+ruff = "^0.4.0"             # fast linter & import sorter
+mypy = "^1.9.0"             # static type checking
+
+[build-system]
+requires = ["poetry-core>=1.8.0"]
+build-backend = "poetry.core.masonry.api"
