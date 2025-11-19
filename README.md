@@ -34,7 +34,7 @@ Before cloning the repo or diving into the Prefect world, make sure you have:
 3. **Python 3.12.x**
 4. **Docker Desktop** (For VMs config management)
 5. **Poetry** (python project VM management)
-6. **Prefect** (Orchestration layers)
+6. **Prefect** (Orchestration layer)
 7. **AWS CLI** (configured with credentials that can read the test S3 bucket and store credentials using AWS KMS)
 
 If you’re on an Apple Silicon (M1/M2/M3/M4) Mac, everything here is tested with that in mind.
@@ -71,7 +71,7 @@ Make sure Docker Desktop is up and running before continuing.
 ## 📦 1. Clone the Repo
 
 ```bash
-git clone https://github.com/jrengif/po_prefect_poetry_data_pipeline.git
+git clone https://github.com/jrengif/poc_prefect_poetry_data_pipeline.git
 cd po_prefect_poetry_data_pipelines
 ```
 
@@ -83,7 +83,7 @@ Everything is managed with Poetry.
 ```bash
 poetry env use 3.12
 
-# Install dependencies (including Prefect, SQLAlchemy/psycopg, boto3, etc.)
+# Install dependencies (including Prefect, SQLAlchemy/psycopg2, boto3, etc.)
 poetry install
 
 # Activate the virtual environment
@@ -138,7 +138,7 @@ docker compose up -d --build
 
 After runing that you could check on docker desktop and the the containers running isolated.
 
-![docker_build_testing](assets/docker_build_testing.png)
+![docker_build_testing](assets/images/docker_build_testing.png)
 
 
 
@@ -202,13 +202,13 @@ When you run `docker compose up`, Docker Compose will:
 
 
 
-🧱 5. checking that the prefect env and warehouse layer are up 
+## 🧱 5. Checking that everything is up and running as expected
 
 For the Prefect part lets open the URL and you could see the APP runing and being accesible from the local host
 
 http://localhost:4200/dashboard
 
-![prefect_web_UI_testing](/assets/prefect_web_UI_testing.png)
+![prefect_web_UI_testing](/assets/images/prefect_web_UI_testing.png)
 
 For postgress use DBeaver to acces using admin priviliges as DBM
 
@@ -216,21 +216,98 @@ https://dbeaver.io/download/
 
 After testing on debeaver filling the fields using the ones provided in the .env file
 
-![dbeaver_connection_testing](/assets/dbeaver_connection_testing.png)
+![dbeaver_connection_testing](/assets/images/dbeaver_connection_testing.png)
 
 
 
-## 📂 Project Structure! Let's do a break!
+## 📂 Project Structure & architechture overview Let's do a break!
 
-This repository is structured like a mini production-ready data platform:
+This repository is a small, modular, production-like data platform built around two core ideas:
+
+1. Orchestration with Prefect
+
+2. A dedicated Postgres “warehouse” layer
+
+![architechture_overview](assets/images/architechture_overview.png)
+
+Everything runs in Docker, with configuration centralized via .env, so the whole setup is easy to replicate across machines, teams, or environments.
+
+### 📦 High-Level Components
+
+Project root:
 
 ```bash
 poc_prefect_poetry_data_pipeline/
-  infra/postgres/init-etl.user.sh # Script for creating ETL postgres user
-  .env
-  .gitignore
-  docker-compose.yml
-  poetry.lock # (added after poetry install )
-  pyproject.toml # (poetry project VM managment)
-  README.md # Step by step config easy to replicate and learn the concepts
+  /assets/images/                 # images included in the README.md file
+  flows/                          # Prefect flows for orchestrating the DataPipeline
+  infra/postgres/init-etl.user.sh # Script for creating ETL postgres user for isolated priviliges
+  .gitignore                      # included replicatable files created at runtime or for local config
+  docker-compose.yml              # VMs isolation for orchestration and warehouse layer
+  poetry.lock                     # (added after poetry install including actual libraries installed)
+  pyproject.toml                  # (Poetry project VM managment)
+  README.md                       # Step by step config easy to replicate and learn the concepts
 ```
+
+At a glance:
+
+- Code & orchestration logic live in flows/ (Python + Prefect).
+
+- Infrastructure concerns (Postgres, users, networks) are encapsulated in infra/ and docker-compose.yml.
+
+- Environment & dependencies are managed consistently via .env and Poetry.
+
+### 🐳 Dockerized Architecture
+
+The docker-compose.yml wires together the warehouse layer (Postgres) and the orchestration layer (Prefect) in an isolated, reproducible way.
+
+### 🔑 Shared configuration via anchors
+
+```bash
+x-common-env: &common-env
+  env_file:
+    - .env
+```
+
+## 🗄️ Warehouse Layer – postgres-db
+
+Role in the architecture:
+
+- Acts as the data warehouse layer.
+- On first startup:
+  - Initializes the main DB (warehouse_db).
+- Runs init-etl-user.sh to create a restricted ETL user and grant the right privileges.
+Uses a named Docker volume (postgres_data) so data persists across container restarts.
+
+Why this is modular/replicable:
+
+- You can swap postgres:16 to another supported version with zero changes in the application code.
+- By adjusting only .env, you can:
+- Change DB names/users/passwords.
+- Run multiple isolated environments (e.g. warehouse_db_dev, warehouse_db_test).
+
+### ⚙️ Orchestration Layer – prefect
+
+Role in the architecture:
+
+- Runs the Prefect 3 server and UI.
+- Orchestrates all your flows found in ./flows (mounted into /opt/prefect/flows).
+- Connects to Postgres using the ETL user credentials (ETL_DB_USER / ETL_DB_PASSWORD).
+- 🔎 Note: Inside Docker, the Prefect container typically reaches Postgres via the service name (e.g. postgres-db) on the default network. The compose file is already structured to make that easy to adjust via env vars.
+
+Why this is modular/replicable:
+
+- You can add new flows (DAGs) in flows/ and they become available to Prefect without touching the infra.
+- You can add more containers for agents, workers, or separate “compute” services, and have them all talk to the same Prefect API and warehouse.
+
+#### 📊 Managing DAGs in the Prefect Web UI
+
+Once the stack is up:
+- The Prefect UI is exposed at: http://localhost:4200
+- From the UI you can:
+  - See registered flows from flows/.
+  - Configure schedules, parameters, and deployments.
+  - Monitor runs, logs, and failures.
+  - Pause/Resume or rerun flows as needed.
+This mirrors a production setup where:
+- Developers define flows in code.
+- Ops/Data teams manage and monitor those flows via the Prefect UI.
